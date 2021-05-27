@@ -1,1 +1,0 @@
-# fair_sortition_made_transparent
