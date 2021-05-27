@@ -26,13 +26,13 @@ instances = ['sf_a_35', 'sf_b_20', 'sf_c_44', 'sf_d_40', 'sf_e_110', 'cca_75', '
 instance_names_dict = {'sf_a_35':'sf(a)', 'sf_b_20': 'sf(b)', 'sf_c_44':'sf(c)', 'sf_d_40':'sf(d)', 'sf_e_110':'sf(e)', 'cca_75':'cca', 'hd_30':'hd', 'mass_24':'mass','nexus_170':'nexus','obf_30':'obf','newd_40':'ndem'}
 
 # objectives (can only run one at a time)
-LEXIMIN = 1
+LEXIMIN = 0
 MAXIMIN = 0
-NASH = 0
+NASH = 1
 
 # which rounding algorithms to analyze
-ILP = 0  
-ILP_MINIMAX_CHANGE = 1                
+ILP = 1  
+ILP_MINIMAX_CHANGE = 0                
 BECK_FIALA = 1
 RANDOMIZED = 1
 RANDOMIZED_REPLICATES = 1000
@@ -47,6 +47,8 @@ for instance in instances:
 
 
 def compute_theoretical_bounds_indloss(k,M,n,C):
+""" Computes two potentially best theoretical upper bounds on change in any marginal in terms of instance parameters
+"""
     bounds = {}
     bounds['bf'] = k/M
     bounds['panelLP'] = math.sqrt((1 + math.log(2)/math.log(n))/2)*math.sqrt(C * math.log(C))/M + 1/M
@@ -60,11 +62,15 @@ def add_dset_to_plot(x,y,c,level):
         rightend = leftend + 0.9/3
         plt.plot([leftend,rightend],[y[xcoord],y[xcoord]],c)
 
-        #plt.plot([xcoord+0.1 + 0.1*level,xcoord+0.9],[y[xcoord],y[xcoord]],c)
-        #if xcoord < len(x)-1:
-        #    plt.plot([xcoord+0.9,xcoord+1+0.1],[y[xcoord],y[xcoord+1]],c+'--',linewidth=0.5)
 
-# # # # # # # # # build data for plot # # # # # # # # # 
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# plot comparing fairness (Figure 1 & corresponding figure in Appendix)
+ # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+
+######### Build Data ###########
 opt_plot_data = []
 ilp_plot_data = []
 bf_plot_data = []
@@ -85,8 +91,6 @@ for instance in instances:
     C = len(respondents_df.groupby(categories))
 
 
-    
-
     if MAXIMIN == 1:
         stub = '../intermediate_data/'+instance+'_m'+str(M)+'_maximin_'
 
@@ -102,7 +106,6 @@ for instance in instances:
 
     committees = [[int(OPT_probabilities_df['committees'].values[i][11:-2].split(',')[j]) for j in range(len(OPT_probabilities_df['committees'].values[i][11:-2].split(',')))] for i in range(len(list(OPT_probabilities_df['committees'].values)))]
         
-    #OPT_probabilities = OPT_probabilities_df['probabilities'].values
     OPT_marginals = OPT_marginals_df['marginals']
 
     if MAXIMIN==1:
@@ -112,11 +115,7 @@ for instance in instances:
 
 
     if ILP==1:
-        #ILP_probabilities_df = pd.read_csv(stub+'ILProunded_probabilities.csv') # FIX THE EXTRA UNDERSCORE WITH AN OVERNIGHT RUN
-        ILP_marginals_df = pd.read_csv(stub+'ILProunded_marginals.csv')
-
-        #ILP_probabilities = ILP_probabilities_df['probabilities'].values
-        ILP_marginals = ILP_marginals_df['marginals']
+        ILP_marginals = pd.read_csv(stub+'ILProunded_marginals.csv')['marginals']
 
         if MAXIMIN==1:
             ilp_plot_data.append(min(ILP_marginals))
@@ -124,11 +123,7 @@ for instance in instances:
             ilp_plot_data.append(gmean(ILP_marginals))
 
     if BECK_FIALA==1:
-        #BF_probabilities_df = pd.read_csv(stub+'BFrounded_probabilities.csv')
-        BF_marginals_df = pd.read_csv(stub+'BFrounded_marginals.csv')  
-
-        #BF_probabilities = BF_probabilities_df['probabilities'].values
-        BF_marginals = BF_marginals_df['marginals']
+        BF_marginals = pd.read_csv(stub+'BFrounded_marginals.csv')['marginals']  
 
         if MAXIMIN==1:
             bf_plot_data.append(min(BF_marginals))
@@ -138,11 +133,7 @@ for instance in instances:
     if RANDOMIZED==1:
         rand_data = []
         for rep in range(RANDOMIZED_REPLICATES):
-            RAND_probabilities_df = pd.read_csv(stub+'RANDrounded_probabilities.csv')
-            RAND_marginals_df = pd.read_csv(stub+'RANDrounded_marginals.csv')  
-
-            RAND_probabilities = RAND_probabilities_df['probabilities'].values
-            RAND_marginals = RAND_marginals_df['marginals']
+            RAND_marginals = pd.read_csv(stub+'RANDrounded_marginals.csv')['marginals']  
 
             if MAXIMIN==1:
                 rand_data.append(min(RAND_marginals))
@@ -164,22 +155,20 @@ for instance in instances:
             theory_plot_data.append(gmean(OPT_marginals) - indloss)
 
 
-
-
-# # # # # # # # # plot data # # # # # # # # # #
+###### Build plot ##########
 if NASH == 1 or MAXIMIN ==1:
 
     x = list(range(len(instances)))
     plt.figure(figsize=(8,4))
 
     if THEORY==1:
-        # instead of plotting the ILP and theoretical bounds as lines, shade the region
+        # shade the region between optimal fairness and lower bound
         for xcoord in x:
             y1 = opt_plot_data[xcoord]
             y2 = theory_plot_data[xcoord]
             plt.fill_between([xcoord+0.05,xcoord+0.95],[y1,y1],[y2,y2],color='k', alpha = 0.15)
 
-            # add thin lines at top and bottom for OPT and bound
+            # add lines at bottom for bound
             plt.plot([xcoord+0.049,xcoord+0.951],[y2,y2],color='k',linewidth=1)
 
     if ILP==1:
@@ -188,34 +177,30 @@ if NASH == 1 or MAXIMIN ==1:
     if RANDOMIZED==1:
         print("maximum standard deviation (over randomized rounding replicates) in objective across instances: "+str(max(rand_std_dev)))
         add_dset_to_plot(x,rand_plot_data,'g',1)
-        #plt.errorbar([i + 0.5 for i in x],rand_plot_data,yerr=) # plot only error bars, with no line
 
     if BECK_FIALA==1:
         add_dset_to_plot(x,bf_plot_data,'orange',2)
 
 
-    #if THEORY==1:
-    #    add_dset_to_plot(x,theory_plot_data,'r')
-
     xticks = list(np.arange(0.5,len(instances)+0.5,1))
     instance_names = [instance_names_dict[instance] for instance in instances]
     plt.xticks(xticks,labels=instance_names)
     plt.xlim(-0.1,len(instances)+0.1)
-    #ymax = math.floor(10*max(opt_plot_data))/10+0.1
-    #plt.ylim(0,ymax)
+
     if MAXIMIN==1:
+        objname = 'IP-Maximin'
         ymax = 0.4
     elif NASH==1:
+        objname = 'IP-NW'
         ymax = 0.6
     plt.ylim(0,ymax)
     plt.text(max(x)+1,ymax*0.925,'m = '+str(M), ha='right')
     
 
-    legend_elements = [Line2D([0], [0], color='b', lw=1, label='IP-Maximin'),
+    legend_elements = [Line2D([0], [0], color='b', lw=1, label=objname),
                        Line2D([0], [0], color='g', lw=1, label='Pipage'),
                        Line2D([0], [0], color='orange', lw=1, label='Beck-Fiala'),
                        Line2D([0], [0], color='k', lw=1, label='Theoretical Bound')]
-                       #Line2D([0], [0], color='r', lw=1, label='Theoretical Bound')]
 
     plt.legend(handles=legend_elements,fontsize=8,loc='upper left')
 
@@ -239,14 +224,11 @@ if NASH == 1 or MAXIMIN ==1:
             plt.text(xticks[i],opt_plot_data[i]+yshift4,'-'+theory_loss+'/m', horizontalalignment='center',fontsize=7.25,color='k')
         
 
-        #  
-
-    # put objective-specific labels on it
+    # put objective-specific labels 
     if MAXIMIN==1:
         plt.ylabel('Maximin objective value')
         plt.savefig('../m'+str(M)+'maximin_algos_comparison.pdf',bbox_inches='tight')
         
-
     elif NASH==1:
         plt.ylabel('Nash Welfare objective value')
         plt.savefig('../m'+str(M)+'nash_algos_comparison.pdf',bbox_inches='tight')
@@ -254,8 +236,11 @@ if NASH == 1 or MAXIMIN ==1:
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# plot comparing leximin distributions
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# plot comparing leximin distributions (Figure 2 & corresponding figures in appendix)
+ # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+
 if LEXIMIN==1:
 
     # plot features: custom positions for each instance
@@ -276,12 +261,13 @@ if LEXIMIN==1:
 
 
     for instance in instances:
+
+        # get instance parameters
         pfi = pf[instance]
         respondents_df = pd.read_csv('../data_panelot/'+instance+'/respondents.csv')
         n = len(respondents_df)
         k = int(instance[instance.rfind('_')+1:]) # get number of people wanted on panel
 
-        # compute number of unique realized feature-vectors in pool
         categories_df = pd.read_csv('../data_panelot/'+instance+'/categories.csv')
         categories = list(categories_df['category'].unique())
         C = len(respondents_df.groupby(categories))
@@ -289,19 +275,19 @@ if LEXIMIN==1:
         stub = '../intermediate_data/'+instance+'_m'+str(M)+'_leximin_'
 
 
+        # read in data
         marginals = list(pd.read_csv(stub + 'opt_marginals.csv')['marginals'].values)
         marginals_ILP_rounded = list(pd.read_csv(stub + 'ILP_MMC_rounded_marginals.csv')['marginals'].values)
         marginals_BF_rounded = list(pd.read_csv(stub + 'BFrounded_marginals.csv')['marginals'].values)
-        #marginals_RAND_rounded = list(pd.read_csv(stub + 'RANDrounded_marginals.csv')['marginals'].values)
         rand_data = []
         for rep in range(RANDOMIZED_REPLICATES):
             marginals_RAND_rounded = (pd.read_csv(stub+'RANDrounded_marginals.csv')['marginals'].values)
             rand_data.append(marginals_RAND_rounded)
-        # now you have a list of marginals, where each row is a replicate. want means and standard deviations of columns.
         marginals_RAND_rounded = np.mean(rand_data,axis=0)
         marginals_RAND_rounded_std = np.std(rand_data,axis=0)
         
-        print("in instance "+instance+", maximum standard deviation (over replicates of randomized rounding runs) of any marginal is:" str(max(marginals_RAND_rounded_std)))
+        # reports maximum standard deviation, since it's so small that it's not being plotted
+        print("in instance "+instance+", maximum standard deviation (over replicates of randomized rounding runs) of any marginal is:" + str(max(marginals_RAND_rounded_std)))
 
         # sort everything by optimal marginals
         marginals_ILP_rounded_sorted = [x for y, x in sorted(zip(marginals, marginals_ILP_rounded))]
@@ -310,8 +296,7 @@ if LEXIMIN==1:
         marginals_sorted = sorted(marginals)
 
 
-        # # Make plot
-
+        # make plot
         fig, ax1 = plt.subplots(figsize=(8,2))
 
         x = list(range(n+1))
@@ -322,7 +307,6 @@ if LEXIMIN==1:
         top= [m+indloss for m in marginals_sorted]
         bottom=[m-indloss for m in marginals_sorted]
         plt.fill_between(x,top+[top[-1]],bottom+[bottom[-1]],color='k', alpha = 0.15,step='post')
-
 
         # specify main plot
         ax1.plot(x,marginals_sorted + [marginals_sorted[-1]],'k',alpha=0.5,linewidth=1,drawstyle='steps-post')
@@ -336,14 +320,12 @@ if LEXIMIN==1:
         ax1.set_xlabel('agents sorted by marginal given by OPT')
         ax1.set_ylim([-0.01,1.01])
 
-
         # legend
         custom_lines = [Line2D([0], [0], color='black', lw=1),
                         Line2D([0], [0], color='cornflowerblue', lw=1, linestyle = '--'),
                         Line2D([0], [0], color='green', lw=1, linestyle= ':'),
                         Line2D([0], [0], color='orange', lw=1, linestyle='-.')]
         ax1.legend(custom_lines,['$p^*$','IP-Marginals','Pipage','Beck-Fiala'],loc='upper left',fontsize=8)
-
 
         # specify inset plot
         ax2 = plt.axes([0,0,1,1])

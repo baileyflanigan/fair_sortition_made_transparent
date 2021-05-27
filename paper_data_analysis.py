@@ -18,32 +18,33 @@ os.system("export GUROBI_HOME=\"/Library/gurobi911/mac64\"")
 np.random.seed(1)
 random.seed(1)
 
-# number of panels in uniform lottery
-discrete_number = 1000
-M = discrete_number
+# # # # # # # # # # # # # # PARAMETERS # # # # # # # # # # # # # # # # #
 
-# which objective you want to optimize
-LEXIMIN = 1
-MAXIMIN = 0
-NASH = 0
-
-# flags for which types of lotteries you want to compute
-OPT = 0
-
-ILP = 0                      # computes both optimal unconstrained and near-optimal unconstrained, wrt to fairness notion specified below
-BECK_FIALA = 0               # computes uniform rounded from OPT via beck-fiala (must run OPT first)
-RANDOMIZED = 1               # computes uniform rounded from OPT via randomized rounding (must run OPT first) 
-RANDOMIZED_REPLICATES = 1000 # runs randomized a bunch of times -> report avg and stdev of loss
-ILP_MINIMIAX_CHANGE = 0      # takes input distribution specified by fairness objectives and computes minimum change in anyone's probability
-
+# number of panels desired in the lottery
+M = 1000
 
 # which instances to analyze
 instances = ['sf_a_35', 'sf_b_20', 'sf_c_44', 'sf_d_40', 'sf_e_110', 'cca_75', 'hd_30', 'mass_24','nexus_170','obf_30','newd_40']
-#instances = ['sf_a_35', 'sf_b_20', 'sf_c_44', 'sf_d_40', 'hd_30', 'mass_24','nexus_170','obf_30','newd_40']
 
-#instances = ['mass_24']
 
-# set optimization parameters
+# which objective you want to optimize
+LEXIMIN = 0
+MAXIMIN = 1
+NASH = 0
+
+# flags for which types of lotteries you want to compute
+OPT = 0                      # computes unconstrained optimal distribution - need to run before any others
+
+ILP = 1                      # computes both optimal unconstrained and near-optimal unconstrained, wrt to fairness notion specified below
+BECK_FIALA = 0               # computes uniform rounded from OPT via beck-fiala (must run OPT first)
+RANDOMIZED = 0               # computes uniform rounded from OPT via randomized rounding (must run OPT first) 
+RANDOMIZED_REPLICATES = 1000 # runs randomized a bunch of times -> report avg and stdev of loss
+ILP_MINIMIAX_CHANGE = 0      # takes input distribution specified by fairness objectives and computes minimum change in anyone's probability
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+
+# optimization / other run parameters
 EPS = 0.0005 
 EPS_NASH = 1
 EPS2 = 0.00000001
@@ -52,22 +53,10 @@ EPS2 = 0.00000001
 check_same_address = False
 check_same_address_columns = [] # unset because never used, for now
 debug = 0
+discrete_number = M
 
 
 
-
-"""Find a distribution over feasible committees that maximizes the minimum probability of an agent being selected.
-
-    Arguments follow the pattern of `find_random_sample`.
-
-    Returns:
-        (committees, probabilities, output_lines)
-        `committees` is a list of feasible committees, where each committee is represented by a frozen set of included
-            agent ids.
-        `probabilities` is a list of probabilities of equal length, describing the probability with which each committee
-            should be selected.
-        `output_lines` is a list of debug strings.
-"""
 def _print(message: str) -> str:
     print(message)
     return message
@@ -351,6 +340,7 @@ def find_opt_distribution_leximin(categories, people,columns_data, number_people
 
 
 def _find_maximin_primal(committees, covered_agents):
+
     model = mip.Model(sense=mip.MAXIMIZE)
 
     committee_variables = [model.add_var(var_type=mip.CONTINUOUS, lb=0., ub=1.) for _ in committees]
@@ -379,8 +369,12 @@ def _find_maximin_primal(committees, covered_agents):
 
 
 def _find_maximin_primal_discrete(committees, covered_agents, discrete_number):
-# continuous probabilities is a list in the same order as committees describing the optimal continuous probabilities
-
+""" finds uniform lottery that maximizes the minimum probability of any agent being selected by solving ILP.
+    inputs: committees = list of committees in support of optimal unconstrained distribution
+            covered_agents = list of agents included on any committee in committees (should be all agents)
+            discrete_number = M, the number of panels over which you want a uniform lottery
+    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+"""
     model = mip.Model(sense=mip.MAXIMIZE)
 
     committee_variables = [model.add_var(var_type=mip.INTEGER, lb=0., ub=mip.INF) for _ in committees]
@@ -409,7 +403,19 @@ def _find_maximin_primal_discrete(committees, covered_agents, discrete_number):
 
 
 def find_opt_distribution_maximin(categories, people, columns_data, number_people_wanted, check_same_address, check_same_address_columns):
+"""Find a distribution over feasible committees that maximizes the minimum probability of an agent being selected.
 
+    Arguments follow the pattern of `find_random_sample`.
+
+    Returns:
+        (committees, probabilities, output_lines)
+        `committees` is a list of feasible committees, where each committee is represented by a frozen set of included
+            agent ids.
+        `probabilities` is a list of probabilities of equal length, describing the probability with which each committee
+            should be selected.
+        `output_lines` is a list of debug strings.
+        boolean flag denoting infeasibility
+"""
     output_lines = [_print("Using maximin algorithm.")]
 
     assert not check_same_address
@@ -542,7 +548,15 @@ def _committees_to_matrix(committees, entitlements,
         columns.append(np.array(column))
     return np.column_stack(columns)
 
+
+
 def find_rounded_distribution_nash(committees, covered_agents, discrete_number):
+""" finds uniform lottery that maximizes the geometric mean of agents' marginals. does so via Baron solver, implemented with pyomo.
+    inputs: committees = list of committees in support of optimal unconstrained distribution
+            covered_agents = list of agents included on any committee in committees (should be all agents)
+            discrete_number = M, the number of panels over which you want a uniform lottery
+    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+"""
 
     n_committees = len(committees)
     n_agents = len(list(covered_agents))
@@ -567,7 +581,6 @@ def find_rounded_distribution_nash(committees, covered_agents, discrete_number):
         model.marginals_constrs.add(model.marginals[agent]==expr)
 
     # objective is product of marginals
-    #model.obj = pyo.Objective(expr=pyo.prod(model.marginals),sense=pyo.maximize)
     model.obj = pyo.Objective(rule=Objrule,sense=pyo.maximize)
 
 
@@ -581,19 +594,16 @@ def find_rounded_distribution_nash(committees, covered_agents, discrete_number):
     for i in model.probs:
         probabilities_rounded.append(model.probs[i].value/discrete_number)
 
-    #print(value(model.obj))
-
-    #for i in model.marginals:
-    #    print(str(model.marginals[i])+' '+str(model.marginals[i].value))
-    #for i in model.probs:
-    #    print(str(model.probs[i])+' '+str(model.probs[i].value))
-
     return probabilities_rounded
 
 # alternate function, which finds nash-optimal uniform lottery via ILP using gurobi solver
 def _find_nash_primal_discrete_gurobi(committees, covered_agents, discrete_number):
-    # continuous probabilities is a list in the same order as committees describing the optimal continuous probabilities
-
+""" finds uniform lottery that maximizes the geometric mean of agents' marginals. does so via Gurobi solver.
+    inputs: committees = list of committees in support of optimal unconstrained distribution
+            covered_agents = list of agents included on any committee in committees (should be all agents)
+            discrete_number = M, the number of panels over which you want a uniform lottery
+    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+"""
     model = grb.Model()
 
     committee_variables = [model.addVar(vtype=grb.GRB.INTEGER, lb=0.) for _ in committees]
@@ -723,8 +733,8 @@ def find_opt_distribution_nash(categories, people, columns_data, number_people_w
 
 
 
-# read data into dictionaries:
-"""
+def build_dictionaries(categories_df,respondents_df):
+""" reads data into dictionaries
      categories: categories["feature"]["value"] is a dictionary with keys "min", "max", "selected", "remaining".
      people: people["nationbuilder_id"] is dictionary mapping "feature" to "value" for a person.
      columns_data: columns_data["nationbuilder_id"] is dictionary mapping "contact_field" to "value" for a person.
@@ -738,8 +748,6 @@ def find_opt_distribution_nash(categories, people, columns_data, number_people_w
              the resulting distribution need no longer be optimal."""
 #for instance in ['sf_a_35']:
 #for instance in ['sf_a_35', 'sf_b_20', 'sf_c_44', 'sf_d_40', 'sf_e_110', 'cca_75', 'hd_30', 'mass_24', 'nexus_170', 'obf_30']:
-
-def build_dictionaries(categories_df,respondents_df):
     categories = {}
     people = {}
     columns_data = None # unset because never used
@@ -763,8 +771,12 @@ def build_dictionaries(categories_df,respondents_df):
 
 
 
-# uses sampford sampling
+
 def randomized_round_pipage(probabilities,M):
+"""implements pipage rounding as in Gandhi et al 2006.
+   inputs: probabilities - probabilities associated with each panel
+           M - number of panels over which you want the uniform lottery to be
+"""
     floor_scaled_probs = [math.floor(p*M) for p in probabilities]
     rem_scaled_probs = [a_i - b_i for a_i, b_i in zip([M*p for p in probabilities], floor_scaled_probs)]
 
@@ -808,18 +820,14 @@ def randomized_round_pipage(probabilities,M):
     return result
 
 
-def randomized_round_simple(probabilities,M):
-    n_committees = len(probabilities)
-    uniform_lottery_committees = np.random.choice(list(range(n_committees)), size = M, p=probabilities)
-
-    rounded_probabilities = [0 for i in range(n_committees)]
-    for i in uniform_lottery_committees:
-        rounded_probabilities[i] += 1/M 
-
-    return rounded_probabilities
-
-
 def beckfiala_round(committees,probabilities,people,M,k):
+"""implements dependent rounding as in Flanigan et al 2020.
+   inputs: committees - list of all panels in support of optimal unconstrained distribution
+           probabilities - probabilities associated with each panel in committees
+           people - list of people in all committees
+           M - number of panels over which you want the uniform lottery to be
+           k - panel size
+"""
 
     probs_round = [int(p*M) for p in probabilities]
     curr_probs = [probabilities[i]*M - probs_round[i]for i in range(len(probabilities))]
@@ -894,19 +902,6 @@ def beckfiala_round(committees,probabilities,people,M,k):
         # drop any constraints that are almost satisfied, within tolerance of k
         constraints_to_delete = []
         for id in agent_constraints:
-            #pessimistic_marginal = 0
-            #optimistic_marginal = 0
-
-            #agent_in_all_active_panels = True
-            #for cnum in range(len(committees)):
-            #    if id in committees[cnum]:
-            #        if cnum in determined_variables and determined_variables[cnum]==True:
-            #            pessimistic_marginal += 1
-            #            optimistic_marginal += 1
-            #        elif cnum not in determined_variables:
-            #            optimistic_marginal +=1
-            #    elif cnum not in determined_variables:
-            #        agent_in_all_active_panels = False
 
             if (pessimistic_marginals[id] >= target_agent_probs[id] - k) and (optimistic_marginals[id] <= target_agent_probs[id] + k):
                 constraints_to_delete.append(id)
@@ -925,6 +920,14 @@ def beckfiala_round(committees,probabilities,people,M,k):
 
 
 def minimax_change_round(committees,probabilities,people,marginals,M):
+""" finds uniform lottery that minimizes the maximum deivation of any agent's marginal from those implied by optimal distribution 
+    inputs: committees = list of committees in support of optimal unconstrained distribution
+            probabilities = probabilities of choosing all panels in optimal unconstrained distribution
+            people = list of agents included on any committee in committees (should be all agents)
+            marginals = marginals given by probabilities, the optimal distribution over panels
+            M = the number of panels over which you want a uniform lottery
+    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+"""
 
     model = mip.Model(sense=mip.MINIMIZE)
 
@@ -940,10 +943,6 @@ def minimax_change_round(committees,probabilities,people,marginals,M):
                 agent_panel_variables[id].append(var)
 
     upper = model.add_var(var_type=mip.CONTINUOUS, lb=0.)
-
-    #agent_variables = {id : model.add_var(var_type=mip.INTEGER,lb=0.) for id in people}
-    #for id in people:
-    #    model.add_constr(agent_variables[id]==mip.xsum(agent_panel_variables[id]))
 
     # sum of all variables pertaining to a given agent 
     for id in people:
@@ -1051,7 +1050,7 @@ for instance in instances:
 
             if obj =='nash':
                 probabilities_rounded = _find_nash_primal_discrete_gurobi(committees,people,M)
-                #probabilities_rounded = find_rounded_distribution_nash(committees,people,M)
+                #probabilities_rounded = find_rounded_distribution_nash(committees,people,M) # solve with baron solver instead
 
             save_results(committees,probabilities_rounded, stub+'ILProunded_',n)
 
@@ -1074,8 +1073,6 @@ for instance in instances:
 
     end = time()
     timings[instance] = end - start
-    #print("Running bf on instance "+ instance+ " took "+str(end-start)+" seconds.")
-    print(end-start)
 
 #write timings to file:
 with open("../intermediate_data/timings.txt", 'w') as f: 
