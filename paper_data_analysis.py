@@ -369,12 +369,12 @@ def _find_maximin_primal(committees, covered_agents):
 
 
 def _find_maximin_primal_discrete(committees, covered_agents, discrete_number):
-""" finds uniform lottery that maximizes the minimum probability of any agent being selected by solving ILP.
-    inputs: committees = list of committees in support of optimal unconstrained distribution
-            covered_agents = list of agents included on any committee in committees (should be all agents)
-            discrete_number = M, the number of panels over which you want a uniform lottery
-    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
-"""
+    """ finds uniform lottery that maximizes the minimum probability of any agent being selected by solving ILP.
+        inputs: committees = list of committees in support of optimal unconstrained distribution
+                covered_agents = list of agents included on any committee in committees (should be all agents)
+                discrete_number = M, the number of panels over which you want a uniform lottery
+        outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+    """
     model = mip.Model(sense=mip.MAXIMIZE)
 
     committee_variables = [model.add_var(var_type=mip.INTEGER, lb=0., ub=mip.INF) for _ in committees]
@@ -403,19 +403,19 @@ def _find_maximin_primal_discrete(committees, covered_agents, discrete_number):
 
 
 def find_opt_distribution_maximin(categories, people, columns_data, number_people_wanted, check_same_address, check_same_address_columns):
-"""Find a distribution over feasible committees that maximizes the minimum probability of an agent being selected.
+    """Find a distribution over feasible committees that maximizes the minimum probability of an agent being selected.
 
-    Arguments follow the pattern of `find_random_sample`.
+        Arguments follow the pattern of `find_random_sample`.
 
-    Returns:
-        (committees, probabilities, output_lines)
-        `committees` is a list of feasible committees, where each committee is represented by a frozen set of included
-            agent ids.
-        `probabilities` is a list of probabilities of equal length, describing the probability with which each committee
-            should be selected.
-        `output_lines` is a list of debug strings.
-        boolean flag denoting infeasibility
-"""
+        Returns:
+            (committees, probabilities, output_lines)
+            `committees` is a list of feasible committees, where each committee is represented by a frozen set of included
+                agent ids.
+            `probabilities` is a list of probabilities of equal length, describing the probability with which each committee
+                should be selected.
+            `output_lines` is a list of debug strings.
+            boolean flag denoting infeasibility
+    """
     output_lines = [_print("Using maximin algorithm.")]
 
     assert not check_same_address
@@ -551,12 +551,12 @@ def _committees_to_matrix(committees, entitlements,
 
 
 def find_rounded_distribution_nash(committees, covered_agents, discrete_number):
-""" finds uniform lottery that maximizes the geometric mean of agents' marginals. does so via Baron solver, implemented with pyomo.
-    inputs: committees = list of committees in support of optimal unconstrained distribution
-            covered_agents = list of agents included on any committee in committees (should be all agents)
-            discrete_number = M, the number of panels over which you want a uniform lottery
-    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
-"""
+    """ finds uniform lottery that maximizes the geometric mean of agents' marginals. does so via Baron solver, implemented with pyomo.
+        inputs: committees = list of committees in support of optimal unconstrained distribution
+                covered_agents = list of agents included on any committee in committees (should be all agents)
+                discrete_number = M, the number of panels over which you want a uniform lottery
+        outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+    """
 
     n_committees = len(committees)
     n_agents = len(list(covered_agents))
@@ -598,12 +598,12 @@ def find_rounded_distribution_nash(committees, covered_agents, discrete_number):
 
 # alternate function, which finds nash-optimal uniform lottery via ILP using gurobi solver
 def _find_nash_primal_discrete_gurobi(committees, covered_agents, discrete_number):
-""" finds uniform lottery that maximizes the geometric mean of agents' marginals. does so via Gurobi solver.
-    inputs: committees = list of committees in support of optimal unconstrained distribution
-            covered_agents = list of agents included on any committee in committees (should be all agents)
-            discrete_number = M, the number of panels over which you want a uniform lottery
-    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
-"""
+    """ finds uniform lottery that maximizes the geometric mean of agents' marginals. does so via Gurobi solver.
+        inputs: committees = list of committees in support of optimal unconstrained distribution
+                covered_agents = list of agents included on any committee in committees (should be all agents)
+                discrete_number = M, the number of panels over which you want a uniform lottery
+        outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+    """
     model = grb.Model()
 
     committee_variables = [model.addVar(vtype=grb.GRB.INTEGER, lb=0.) for _ in committees]
@@ -734,18 +734,18 @@ def find_opt_distribution_nash(categories, people, columns_data, number_people_w
 
 
 def build_dictionaries(categories_df,respondents_df):
-""" reads data into dictionaries
-     categories: categories["feature"]["value"] is a dictionary with keys "min", "max", "selected", "remaining".
-     people: people["nationbuilder_id"] is dictionary mapping "feature" to "value" for a person.
-     columns_data: columns_data["nationbuilder_id"] is dictionary mapping "contact_field" to "value" for a person.
-     number_people_wanted:
-     check_same_address:
-     check_same_address_columns: list of contact fields of columns that have to be equal for being
-        counted as residing at the same address
-     selection_algorithm: one out of "legacy", "maximin", "leximin", or "nash"
-     discrete_number: if not None and if selection algorithm is "maximin", force the distribution to be
-             implementable as a uniform choice over `discrete_number` many committees (possibly repeated). note that
-             the resulting distribution need no longer be optimal."""
+    """ reads data into dictionaries
+         categories: categories["feature"]["value"] is a dictionary with keys "min", "max", "selected", "remaining".
+         people: people["nationbuilder_id"] is dictionary mapping "feature" to "value" for a person.
+         columns_data: columns_data["nationbuilder_id"] is dictionary mapping "contact_field" to "value" for a person.
+         number_people_wanted:
+         check_same_address:
+         check_same_address_columns: list of contact fields of columns that have to be equal for being
+            counted as residing at the same address
+         selection_algorithm: one out of "legacy", "maximin", "leximin", or "nash"
+         discrete_number: if not None and if selection algorithm is "maximin", force the distribution to be
+                 implementable as a uniform choice over `discrete_number` many committees (possibly repeated). note that
+                 the resulting distribution need no longer be optimal."""
 #for instance in ['sf_a_35']:
 #for instance in ['sf_a_35', 'sf_b_20', 'sf_c_44', 'sf_d_40', 'sf_e_110', 'cca_75', 'hd_30', 'mass_24', 'nexus_170', 'obf_30']:
     categories = {}
@@ -773,10 +773,10 @@ def build_dictionaries(categories_df,respondents_df):
 
 
 def randomized_round_pipage(probabilities,M):
-"""implements pipage rounding as in Gandhi et al 2006.
-   inputs: probabilities - probabilities associated with each panel
-           M - number of panels over which you want the uniform lottery to be
-"""
+    """implements pipage rounding as in Gandhi et al 2006.
+       inputs: probabilities - probabilities associated with each panel
+               M - number of panels over which you want the uniform lottery to be
+    """
     floor_scaled_probs = [math.floor(p*M) for p in probabilities]
     rem_scaled_probs = [a_i - b_i for a_i, b_i in zip([M*p for p in probabilities], floor_scaled_probs)]
 
@@ -821,13 +821,13 @@ def randomized_round_pipage(probabilities,M):
 
 
 def beckfiala_round(committees,probabilities,people,M,k):
-"""implements dependent rounding as in Flanigan et al 2020.
-   inputs: committees - list of all panels in support of optimal unconstrained distribution
-           probabilities - probabilities associated with each panel in committees
-           people - list of people in all committees
-           M - number of panels over which you want the uniform lottery to be
-           k - panel size
-"""
+    """implements dependent rounding as in Flanigan et al 2020.
+       inputs: committees - list of all panels in support of optimal unconstrained distribution
+               probabilities - probabilities associated with each panel in committees
+               people - list of people in all committees
+               M - number of panels over which you want the uniform lottery to be
+               k - panel size
+    """
 
     probs_round = [int(p*M) for p in probabilities]
     curr_probs = [probabilities[i]*M - probs_round[i]for i in range(len(probabilities))]
@@ -920,14 +920,14 @@ def beckfiala_round(committees,probabilities,people,M,k):
 
 
 def minimax_change_round(committees,probabilities,people,marginals,M):
-""" finds uniform lottery that minimizes the maximum deivation of any agent's marginal from those implied by optimal distribution 
-    inputs: committees = list of committees in support of optimal unconstrained distribution
-            probabilities = probabilities of choosing all panels in optimal unconstrained distribution
-            people = list of agents included on any committee in committees (should be all agents)
-            marginals = marginals given by probabilities, the optimal distribution over panels
-            M = the number of panels over which you want a uniform lottery
-    outputs: vector of probabilities, one assigned to each committee (in order of committees list)
-"""
+    """ finds uniform lottery that minimizes the maximum deivation of any agent's marginal from those implied by optimal distribution 
+        inputs: committees = list of committees in support of optimal unconstrained distribution
+                probabilities = probabilities of choosing all panels in optimal unconstrained distribution
+                people = list of agents included on any committee in committees (should be all agents)
+                marginals = marginals given by probabilities, the optimal distribution over panels
+                M = the number of panels over which you want a uniform lottery
+        outputs: vector of probabilities, one assigned to each committee (in order of committees list)
+    """
 
     model = mip.Model(sense=mip.MINIMIZE)
 

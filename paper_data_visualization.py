@@ -26,13 +26,13 @@ instances = ['sf_a_35', 'sf_b_20', 'sf_c_44', 'sf_d_40', 'sf_e_110', 'cca_75', '
 instance_names_dict = {'sf_a_35':'sf(a)', 'sf_b_20': 'sf(b)', 'sf_c_44':'sf(c)', 'sf_d_40':'sf(d)', 'sf_e_110':'sf(e)', 'cca_75':'cca', 'hd_30':'hd', 'mass_24':'mass','nexus_170':'nexus','obf_30':'obf','newd_40':'ndem'}
 
 # objectives (can only run one at a time)
-LEXIMIN = 0
+LEXIMIN = 1
 MAXIMIN = 0
-NASH = 1
+NASH = 0
 
 # which rounding algorithms to analyze
-ILP = 1  
-ILP_MINIMAX_CHANGE = 0                
+ILP = 0
+ILP_MINIMAX_CHANGE = 1               
 BECK_FIALA = 1
 RANDOMIZED = 1
 RANDOMIZED_REPLICATES = 1000
@@ -47,12 +47,11 @@ for instance in instances:
 
 
 def compute_theoretical_bounds_indloss(k,M,n,C):
-""" Computes two potentially best theoretical upper bounds on change in any marginal in terms of instance parameters
-"""
+    """ Computes two potentially best theoretical upper bounds on change in any marginal in terms of instance parameters
+    """
     bounds = {}
     bounds['bf'] = k/M
-    bounds['panelLP'] = math.sqrt((1 + math.log(2)/math.log(n))/2)*math.sqrt(C * math.log(C))/M + 1/M
-
+    bounds['panelLP'] = math.sqrt((1 + math.log(2)/math.log(C))/2)*math.sqrt(C * math.log(C))/M + 1/M
     return bounds
 
 
@@ -105,7 +104,8 @@ for instance in instances:
     OPT_marginals_df = pd.read_csv(stub+'opt_marginals.csv')
 
     committees = [[int(OPT_probabilities_df['committees'].values[i][11:-2].split(',')[j]) for j in range(len(OPT_probabilities_df['committees'].values[i][11:-2].split(',')))] for i in range(len(list(OPT_probabilities_df['committees'].values)))]
-        
+
+
     OPT_marginals = OPT_marginals_df['marginals']
 
     if MAXIMIN==1:
@@ -220,7 +220,7 @@ if NASH == 1 or MAXIMIN ==1:
             bf_loss = str(abs(round((opt_plot_data[i] - bf_plot_data[i])*M,1)))
             plt.text(xticks[i],opt_plot_data[i]+yshift3,'-'+bf_loss+'/m', horizontalalignment='center',fontsize=7.25,color='orange')
         if THEORY == 1:
-            theory_loss = str(abs(round((opt_plot_data[i] - theory_plot_data[i])*M,1)))
+            theory_loss = str(abs(round((opt_plot_data[i] - theory_plot_data[i])*M,2)))
             plt.text(xticks[i],opt_plot_data[i]+yshift4,'-'+theory_loss+'/m', horizontalalignment='center',fontsize=7.25,color='k')
         
 
@@ -274,6 +274,9 @@ if LEXIMIN==1:
 
         stub = '../intermediate_data/'+instance+'_m'+str(M)+'_leximin_'
 
+        OPT_probabilities_df = pd.read_csv(stub+'opt_probabilities.csv')
+        committees = [[int(OPT_probabilities_df['committees'].values[i][11:-2].split(',')[j]) for j in range(len(OPT_probabilities_df['committees'].values[i][11:-2].split(',')))] for i in range(len(list(OPT_probabilities_df['committees'].values)))]
+        probabilities = OPT_probabilities_df['probabilities'].values
 
         # read in data
         marginals = list(pd.read_csv(stub + 'opt_marginals.csv')['marginals'].values)
